@@ -23,7 +23,7 @@ export * from './types.js';
 // Convenience factory function
 import { ChromeStreamController, ChromeStreamConfig } from './ChromeStreamController.js';
 import { SonnetBridge, SonnetBridgeConfig } from './SonnetBridge.js';
-import { ScreencastFrame, BrowserAction, SessionState } from './types.js';
+import { ScreencastFrame, BrowserAction } from './types.js';
 
 /**
  * Create a fully configured Chrome Stream instance with Sonnet integration

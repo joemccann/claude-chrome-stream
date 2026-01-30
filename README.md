@@ -419,32 +419,56 @@ await controller.stop();
 
 ## Configuration
 
-### Configuration File Locations
+### Setting Up Your API Key
 
-Configuration is loaded from the first file found (in order):
+An Anthropic API key is required for the `run` command. Configure it using one of these methods:
 
-1. `./claude-chrome-stream.json` (project root)
-2. `./.claude-chrome-stream.json` (hidden file in project)
-3. `~/.config/claude-chrome-stream/config.json` (user config)
-4. `~/.claude/settings.json` (with `chromeStream` key)
+#### Option 1: Add to `~/.claude/settings.json` (Recommended)
 
-### Full Configuration Reference
+Add `anthropicApiKey` as a **top-level key** in your existing settings file:
 
 ```json
 {
-  "viewportWidth": 1280,
-  "viewportHeight": 800,
-  "quality": 80,
-  "everyNthFrame": 1,
-  "deltaThreshold": 2,
-  "keepAliveMs": 2000,
-  "maxBufferSize": 10,
-  "headless": false,
-  "devtools": false,
-  "chromePath": "/path/to/chrome",
-  "userDataDir": "/path/to/user-data",
-  "model": "claude-sonnet-4-20250514",
-  "maxTokens": 4096
+  "permissions": {
+    "allow": ["..."]
+  },
+  "anthropicApiKey": "sk-ant-...",
+  "chromeStream": {
+    "viewportWidth": 1280,
+    "viewportHeight": 800
+  }
+}
+```
+
+> **Note:** Merge these keys with your existing settings. Only `anthropicApiKey` is required. The `chromeStream` object is optional and allows you to customize browser defaults.
+
+#### Option 2: Environment Variable
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### Chrome Stream Options
+
+Add the optional `chromeStream` object to `~/.claude/settings.json` to customize defaults:
+
+```json
+{
+  "anthropicApiKey": "sk-ant-...",
+  "chromeStream": {
+    "viewportWidth": 1280,
+    "viewportHeight": 800,
+    "quality": 80,
+    "everyNthFrame": 1,
+    "deltaThreshold": 2,
+    "keepAliveMs": 2000,
+    "maxBufferSize": 10,
+    "headless": false,
+    "devtools": false,
+    "chromePath": "/path/to/chrome",
+    "userDataDir": "/path/to/user-data",
+    "model": "claude-sonnet-4-20250514"
+  }
 }
 ```
 
@@ -791,14 +815,16 @@ Check if the page has animations or dynamic content:
 }
 ```
 
-#### "ANTHROPIC_API_KEY required"
+#### "Anthropic API key required"
+
+Configure your API key using one of these methods:
 
 ```bash
-# Set the environment variable
-export ANTHROPIC_API_KEY=sk-ant-your-key-here
+# Option 1: Add to ~/.claude/settings.json
+# Add "anthropicApiKey": "sk-ant-..." as a top-level key
 
-# Or add to config file
-echo '{"apiKey": "sk-ant-your-key-here"}' > ~/.config/claude-chrome-stream/config.json
+# Option 2: Set environment variable
+export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ### Debug Mode

@@ -16,7 +16,6 @@ import {
   MessageContent,
   TextContent,
   ImageContent,
-  ToolUseContent,
   ToolResultContent,
 } from './types.js';
 
@@ -125,28 +124,39 @@ Always reference the frame you're acting on and explain your actions.`;
     }));
 
     try {
-      const response = await this.client.messages.create({
+      const createParams = {
         model: this.config.model,
         max_tokens: this.config.maxTokens,
         system: this.systemPrompt,
         tools: [
           {
-            ...COMPUTER_TOOL,
+            type: COMPUTER_TOOL.type,
+            name: COMPUTER_TOOL.name,
             display_width_px: this.config.displayWidth,
             display_height_px: this.config.displayHeight,
-          } as Anthropic.Messages.ComputerUseTool,
+          },
         ],
-        messages,
-        betas: this.config.enableBeta ? ['computer-use-2025-01-24'] : undefined,
-      } as Anthropic.Messages.MessageCreateParams);
+        messages: messages as unknown as Anthropic.Messages.MessageParam[],
+      };
+
+      // Use beta API for computer-use feature, cast through unknown to handle SDK type strictness
+      const response = this.config.enableBeta
+        ? await this.client.beta.messages.create({
+            ...createParams,
+            betas: ['computer-use-2025-01-24'],
+          } as unknown as Parameters<typeof this.client.beta.messages.create>[0])
+        : await this.client.messages.create(createParams as unknown as Anthropic.Messages.MessageCreateParamsNonStreaming);
+
+      // Cast response to Message type for parsing
+      const messageResponse = response as Anthropic.Messages.Message;
 
       // Parse response
-      const result = this.parseResponse(response);
+      const result = this.parseResponse(messageResponse);
 
       // Add assistant response to history
       this.conversationHistory.push({
         role: 'assistant',
-        content: response.content as MessageContent[],
+        content: messageResponse.content as MessageContent[],
       });
 
       return result;
@@ -184,26 +194,37 @@ Always reference the frame you're acting on and explain your actions.`;
       content: msg.content,
     }));
 
-    const response = await this.client.messages.create({
+    const createParams = {
       model: this.config.model,
       max_tokens: this.config.maxTokens,
       system: this.systemPrompt,
       tools: [
         {
-          ...COMPUTER_TOOL,
+          type: COMPUTER_TOOL.type,
+          name: COMPUTER_TOOL.name,
           display_width_px: this.config.displayWidth,
           display_height_px: this.config.displayHeight,
-        } as Anthropic.Messages.ComputerUseTool,
+        },
       ],
-      messages,
-      betas: this.config.enableBeta ? ['computer-use-2025-01-24'] : undefined,
-    } as Anthropic.Messages.MessageCreateParams);
+      messages: messages as unknown as Anthropic.Messages.MessageParam[],
+    };
 
-    const parsedResult = this.parseResponse(response);
+    // Use beta API for computer-use feature, cast through unknown to handle SDK type strictness
+    const response = this.config.enableBeta
+      ? await this.client.beta.messages.create({
+          ...createParams,
+          betas: ['computer-use-2025-01-24'],
+        } as unknown as Parameters<typeof this.client.beta.messages.create>[0])
+      : await this.client.messages.create(createParams as unknown as Anthropic.Messages.MessageCreateParamsNonStreaming);
+
+    // Cast response to Message type for parsing
+    const messageResponse = response as Anthropic.Messages.Message;
+
+    const parsedResult = this.parseResponse(messageResponse);
 
     this.conversationHistory.push({
       role: 'assistant',
-      content: response.content as MessageContent[],
+      content: messageResponse.content as MessageContent[],
     });
 
     return parsedResult;

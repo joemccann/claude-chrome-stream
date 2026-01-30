@@ -14,7 +14,6 @@ import {
   StreamConfig,
   DEFAULT_CONFIG,
   SessionState,
-  StreamEvent,
   ErrorEvent,
 } from './types.js';
 

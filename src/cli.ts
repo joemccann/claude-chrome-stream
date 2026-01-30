@@ -4,7 +4,7 @@
  * Command-line interface for browser automation
  */
 
-import { createChromeStream, runAutonomousAgent } from './index.js';
+import { runAutonomousAgent } from './index.js';
 import { MCPServer } from './MCPServer.js';
 import { ChromeStreamController } from './ChromeStreamController.js';
 import { BrowserAction } from './types.js';
@@ -21,35 +21,60 @@ interface CLIConfig {
   model: string;
 }
 
+const CLAUDE_SETTINGS_PATH = path.join(process.env.HOME || '', '.claude', 'settings.json');
+
 function loadConfig(): Partial<CLIConfig> {
-  const configPaths = [
-    path.join(process.cwd(), 'claude-chrome-stream.json'),
-    path.join(process.cwd(), '.claude-chrome-stream.json'),
-    path.join(process.env.HOME || '', '.config', 'claude-chrome-stream', 'config.json'),
-    path.join(process.env.HOME || '', '.claude', 'settings.json'),
-  ];
+  const config: Partial<CLIConfig> = {};
 
-  for (const configPath of configPaths) {
-    try {
-      if (fs.existsSync(configPath)) {
-        const content = fs.readFileSync(configPath, 'utf-8');
-        const config = JSON.parse(content);
+  // Load from ~/.claude/settings.json
+  try {
+    if (fs.existsSync(CLAUDE_SETTINGS_PATH)) {
+      const content = fs.readFileSync(CLAUDE_SETTINGS_PATH, 'utf-8');
+      const settings = JSON.parse(content);
 
-        // Handle Claude settings.json format
-        if (config.chromeStream) {
-          return config.chromeStream;
-        }
-        if (config.anthropicApiKey) {
-          return { apiKey: config.anthropicApiKey, ...config };
-        }
-        return config;
+      // Get API key from anthropicApiKey
+      if (settings.anthropicApiKey) {
+        config.apiKey = settings.anthropicApiKey;
       }
-    } catch {
-      // Continue to next config path
+
+      // Get chrome stream specific settings
+      if (settings.chromeStream) {
+        Object.assign(config, settings.chromeStream);
+      }
     }
+  } catch {
+    // Ignore parse errors
   }
 
-  return {};
+  // Fall back to environment variable for API key
+  if (!config.apiKey && process.env.ANTHROPIC_API_KEY) {
+    config.apiKey = process.env.ANTHROPIC_API_KEY;
+  }
+
+  return config;
+}
+
+function getApiKey(): string {
+  const config = loadConfig();
+
+  if (config.apiKey) {
+    return config.apiKey;
+  }
+
+  console.error('Error: Anthropic API key required.\n');
+  console.error('Configure your API key using one of these methods:\n');
+  console.error('  1. Add "anthropicApiKey" to ~/.claude/settings.json:');
+  console.error('');
+  console.error('     {');
+  console.error('       "permissions": { ... },');
+  console.error('       "anthropicApiKey": "sk-ant-..."');
+  console.error('     }');
+  console.error('');
+  console.error('  2. Export environment variable:');
+  console.error('');
+  console.error('     export ANTHROPIC_API_KEY=sk-ant-...');
+  console.error('');
+  process.exit(1);
 }
 
 function parseArgs(args: string[]): {
@@ -129,12 +154,23 @@ EXAMPLES:
   claude-chrome-stream screenshot --url https://example.com --output ./screenshots
 
 CONFIGURATION:
-  Create a config file at one of these locations:
-  - ./claude-chrome-stream.json
-  - ~/.config/claude-chrome-stream/config.json
-  - ~/.claude/settings.json (with chromeStream key)
+  API key is required for the 'run' command. Configure using one of:
 
-  Or set ANTHROPIC_API_KEY environment variable.
+  1. Add to ~/.claude/settings.json (merge with existing settings):
+
+     {
+       "permissions": { ... },
+       "anthropicApiKey": "sk-ant-...",
+       "chromeStream": {
+         "viewportWidth": 1280,
+         "viewportHeight": 800
+       }
+     }
+
+     Only "anthropicApiKey" is required. The "chromeStream" object is optional.
+
+  2. Export environment variable:
+     export ANTHROPIC_API_KEY=sk-ant-...
 `);
 }
 
@@ -216,13 +252,8 @@ async function runAutonomous(
   maxSteps: number,
   headless: boolean
 ): Promise<void> {
+  const apiKey = getApiKey();
   const config = loadConfig();
-
-  if (!config.apiKey && !process.env.ANTHROPIC_API_KEY) {
-    console.error('Error: Anthropic API key required.');
-    console.error('Set ANTHROPIC_API_KEY environment variable or add to config file.');
-    process.exit(1);
-  }
 
   console.log(`Starting autonomous agent...`);
   console.log(`URL: ${url}`);
@@ -238,7 +269,7 @@ async function runAutonomous(
         viewportHeight: config.viewportHeight || 800,
       },
       sonnet: {
-        apiKey: config.apiKey,
+        apiKey,
         model: config.model || 'claude-sonnet-4-20250514',
       },
       initialUrl: url,

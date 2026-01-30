@@ -8,15 +8,13 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-  ToolSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { ChromeStreamController, ChromeStreamConfig } from './ChromeStreamController.js';
-import { BrowserAction, Coordinate, ScrollDirection } from './types.js';
+import { BrowserAction } from './types.js';
 
 // Zod schemas for tool inputs
 const CoordinateSchema = z.tuple([z.number(), z.number()]);
-const RegionSchema = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 
 const ActionSchemas = {
   screenshot: z.object({

@@ -68,8 +68,6 @@ const MODIFIER_TO_KEY: Record<ModifierKey, KeyInput> = {
 export class InputController {
   private page: Page;
   private cdpSession: CDPSession;
-  private viewportWidth: number;
-  private viewportHeight: number;
   private actionQueue: Array<{
     action: BrowserAction;
     resolve: (result: ActionResult) => void;
@@ -81,13 +79,11 @@ export class InputController {
   constructor(
     page: Page,
     cdpSession: CDPSession,
-    viewportWidth: number,
-    viewportHeight: number
+    _viewportWidth: number,
+    _viewportHeight: number
   ) {
     this.page = page;
     this.cdpSession = cdpSession;
-    this.viewportWidth = viewportWidth;
-    this.viewportHeight = viewportHeight;
   }
 
   /**
@@ -145,8 +141,6 @@ export class InputController {
   }
 
   private async executeAction(action: BrowserAction): Promise<ActionResult> {
-    const startTime = Date.now();
-
     try {
       let screenshot: string | undefined;
 
@@ -457,13 +451,6 @@ export class InputController {
     return [coordinate[0], coordinate[1]];
   }
 
-  /**
-   * Update viewport dimensions (if resize is supported)
-   */
-  updateViewport(width: number, height: number): void {
-    this.viewportWidth = width;
-    this.viewportHeight = height;
-  }
 }
 
 export default InputController;

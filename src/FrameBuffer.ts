@@ -55,8 +55,6 @@ export class FrameBuffer extends EventEmitter {
   private frames: ScreencastFrame[] = [];
   private config: FrameBufferConfig;
   private pendingActions: PendingAction[] = [];
-  private lastActionFrameId: number | null = null;
-  private frameListenerActive = false;
 
   constructor(config: Partial<FrameBufferConfig> = {}) {
     super();
@@ -175,7 +173,6 @@ export class FrameBuffer extends EventEmitter {
       };
 
       this.pendingActions.push(pendingAction);
-      this.lastActionFrameId = beforeFrame.frameId;
 
       // Set timeout for max wait
       setTimeout(() => {
@@ -321,7 +318,6 @@ export class FrameBuffer extends EventEmitter {
   clear(): void {
     this.frames = [];
     this.pendingActions = [];
-    this.lastActionFrameId = null;
   }
 
   /**

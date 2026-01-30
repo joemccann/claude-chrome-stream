@@ -7,7 +7,6 @@ import { CDPSession } from 'puppeteer';
 import { EventEmitter } from 'events';
 import sharp from 'sharp';
 import pixelmatch from 'pixelmatch';
-import { PNG } from 'pngjs';
 import {
   StreamConfig,
   ScreencastFrame,
@@ -25,7 +24,7 @@ interface CDPScreencastFrameEvent {
     deviceHeight: number;
     scrollOffsetX: number;
     scrollOffsetY: number;
-    timestamp: number;
+    timestamp?: number;
   };
   sessionId: number;
 }
