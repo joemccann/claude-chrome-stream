@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "claude-chrome-stream": {
+      "command": "node",
+      "args": ["dist/mcp-server.js"],
+      "cwd": "${pluginDir}",
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "claude-chrome-stream",
+  "description": "High-performance Chrome automation with real-time CDP streaming. Replaces the standard screenshot-upload-act loop with continuous visual streaming for fluid, low-latency web interaction.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Claude Chrome Stream Contributors"
+  },
+  "homepage": "https://github.com/joemccann/claude-chrome-stream",
+  "repository": "https://github.com/joemccann/claude-chrome-stream",
+  "license": "MIT",
+  "keywords": [
+    "chrome",
+    "automation",
+    "streaming",
+    "cdp",
+    "browser"
+  ],
+  "capabilities": {
+    "mcp": true,
+    "skills": true
+  }
+}
