@@ -105,10 +105,14 @@ export async function runAutonomousAgent(config: {
     frame: ScreencastFrame;
     response: { text?: string; actions?: BrowserAction[] };
   }) => void;
+  onAction?: (action: BrowserAction, actionNumber: number) => void;
+  onComplete?: (text: string) => void;
 }): Promise<{
   success: boolean;
   steps: number;
+  totalActions: number;
   finalFrame: ScreencastFrame | null;
+  finalResponse?: string;
   conversation: unknown[];
 }> {
   const maxSteps = config.maxSteps || 50;
@@ -119,11 +123,17 @@ export async function runAutonomousAgent(config: {
   });
 
   let steps = 0;
+  let totalActions = 0;
   let finalFrame: ScreencastFrame | null = null;
+  let finalResponse: string | undefined;
   let browserError: Error | null = null;
+  let isShuttingDown = false;
 
   // Handle browser errors gracefully
   controller.on('error', (event) => {
+    // Ignore errors during shutdown - they're expected
+    if (isShuttingDown) return;
+
     const data = event.data as { message?: string } | undefined;
     console.error(`[Agent] Browser error: ${data?.message || 'Unknown error'}`);
     browserError = new Error(data?.message || 'Browser error');
@@ -166,10 +176,16 @@ export async function runAutonomousAgent(config: {
       // Check if done
       if (response.stopReason === 'end_turn' && !response.toolCalls) {
         finalFrame = frame;
+        finalResponse = response.text;
+        if (response.text) {
+          config.onComplete?.(response.text);
+        }
         return {
           success: true,
           steps,
+          totalActions,
           finalFrame,
+          finalResponse,
           conversation: sonnet.getConversationHistory(),
         };
       }
@@ -199,9 +215,11 @@ export async function runAutonomousAgent(config: {
           }
 
           try {
-            console.error(`[Agent] Executing action: ${toolCall.input.action}`);
+            totalActions++;
+            config.onAction?.(toolCall.input, totalActions);
+            console.error(`[Agent] Executing action #${totalActions}: ${toolCall.input.action}`);
             const result = await controller.executeAction(toolCall.input);
-            console.error(`[Agent] Action completed: ${toolCall.input.action}`);
+            console.error(`[Agent] Action #${totalActions} completed: ${toolCall.input.action}`);
 
             // Add result to conversation - only the last one should call the API
             if (isLastToolCall) {
@@ -256,13 +274,24 @@ export async function runAutonomousAgent(config: {
 
         // Check if the response indicates we're done
         if (nextResponse) {
+          // Log response text if any
+          if (nextResponse.text) {
+            console.error(`[Agent] Claude response: ${nextResponse.text.substring(0, 200)}${nextResponse.text.length > 200 ? '...' : ''}`);
+          }
+
           // Check if done
           if (nextResponse.stopReason === 'end_turn' && !nextResponse.toolCalls) {
             finalFrame = controller.getLatestFrame();
+            finalResponse = nextResponse.text;
+            if (nextResponse.text) {
+              config.onComplete?.(nextResponse.text);
+            }
             return {
               success: true,
               steps,
+              totalActions,
               finalFrame,
+              finalResponse,
               conversation: sonnet.getConversationHistory(),
             };
           }
@@ -281,15 +310,18 @@ export async function runAutonomousAgent(config: {
       prompt = 'Continue with the task based on the current state.';
     }
 
-    // Max steps reached
+    // Max steps reached or browser error
     finalFrame = controller.getLatestFrame();
     return {
-      success: false,
+      success: !browserError,
       steps,
+      totalActions,
       finalFrame,
+      finalResponse,
       conversation: sonnet.getConversationHistory(),
     };
   } finally {
+    isShuttingDown = true;
     await stop();
   }
 }

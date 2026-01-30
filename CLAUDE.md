@@ -59,6 +59,9 @@ src/
 ├── cli.ts                      # CLI entry point
 └── mcp-server.ts               # Standalone MCP server entry
 
+docs/
+└── bug-fixes/                  # Bug fix documentation (bf-YYYY-MM-DD.md)
+
 skills/                         # Claude Code skills
 ├── stream-browser/             # Interactive browser skill
 ├── autonomous-browse/          # Autonomous agent skill
@@ -349,6 +352,53 @@ import { BrowserManager } from './BrowserManager';  // Missing .js
 - [Anthropic Computer Use](https://docs.anthropic.com/en/docs/agents-and-tools/computer-use)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [pixelmatch](https://github.com/mapbox/pixelmatch)
+
+---
+
+## Bug Fix Documentation
+
+When fixing bugs in this project, document all fixes in the `docs/bug-fixes/` directory.
+
+### Process
+
+1. After fixing a batch of bugs, create a markdown summary
+2. Name the file `bf-YYYY-MM-DD.md` (e.g., `bf-2026-01-30.md`)
+3. Place it in `docs/bug-fixes/`
+
+### Format
+
+Each bug fix document should include:
+- **Date** of the fixes
+- **Build errors** (if any) with fixes
+- **Runtime errors** with:
+  - File(s) affected
+  - Description of the issue
+  - How it was fixed
+- **Files modified** summary table
+- **Result** confirming the fix works
+
+### Example
+
+```markdown
+# Bug Fixes Summary
+
+**Date:** 2026-01-30
+
+## Runtime Errors
+
+### 1. Issue Name
+**File:** `src/SomeFile.ts`
+
+Description of what was broken.
+
+**Fix:** What was done to fix it.
+
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/SomeFile.ts` | Brief description |
+```
 
 ---
 

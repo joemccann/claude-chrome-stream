@@ -278,17 +278,26 @@ async function runAutonomous(
       onStep: (step) => {
         console.log(`\n--- Step ${step.stepNumber} ---`);
         if (step.response.text) {
-          console.log(`Response: ${step.response.text.substring(0, 200)}...`);
+          const text = step.response.text;
+          console.log(`Response: ${text.length > 200 ? text.substring(0, 200) + '...' : text}`);
         }
         if (step.response.actions) {
-          console.log(`Actions: ${step.response.actions.map(a => a.action).join(', ')}`);
+          console.log(`Planned actions: ${step.response.actions.map(a => a.action).join(', ')}`);
         }
+      },
+      onAction: (action, actionNumber) => {
+        console.log(`  [Action #${actionNumber}] ${action.action}`);
+      },
+      onComplete: (text) => {
+        console.log('\n=== Final Response ===');
+        console.log(text);
       },
     });
 
     console.log('\n=== Agent Complete ===');
     console.log(`Success: ${result.success}`);
-    console.log(`Total steps: ${result.steps}`);
+    console.log(`Total API steps: ${result.steps}`);
+    console.log(`Total browser actions: ${result.totalActions}`);
   } catch (error) {
     console.error('Agent failed:', error);
     process.exit(1);

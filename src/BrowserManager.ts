@@ -24,6 +24,7 @@ export class BrowserManager extends EventEmitter {
   private config: StreamConfig;
   private sessionId: string;
   private isConnected = false;
+  private isClosing = false;
   private reconnectAttempts = 0;
   private readonly maxReconnectAttempts = 3;
   private heartbeatTimer: NodeJS.Timeout | null = null;
@@ -236,6 +237,7 @@ export class BrowserManager extends EventEmitter {
    * Close browser and cleanup
    */
   async close(): Promise<void> {
+    this.isClosing = true;
     this.isConnected = false;
     this.stopHeartbeat();
 
@@ -297,6 +299,9 @@ export class BrowserManager extends EventEmitter {
     if (!this.browser) return;
 
     this.browser.on('disconnected', () => {
+      // Don't log or emit error if we're intentionally closing
+      if (this.isClosing) return;
+
       this.isConnected = false;
       console.error('[BrowserManager] Browser process disconnected - this usually means Chrome crashed or was killed');
       this.emitError('Browser disconnected', null, true);
