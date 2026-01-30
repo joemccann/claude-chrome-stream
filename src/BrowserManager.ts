@@ -49,6 +49,8 @@ export class BrowserManager extends EventEmitter {
     const launchOptions: PuppeteerLaunchOptions = {
       headless: this.config.headless,
       devtools: this.config.devtools,
+      // Use pipe for more stable connection (vs websocket)
+      pipe: true,
       // Increase protocol timeout to handle long API calls (5 minutes)
       protocolTimeout: 300000,
       args: [
@@ -62,15 +64,22 @@ export class BrowserManager extends EventEmitter {
         // Prevent browser from being killed when idle
         '--disable-hang-monitor',
         '--disable-component-update',
-        // macOS arm64 optimizations
-        '--enable-features=Metal',
-        '--use-angle=metal',
+        // Disable GPU to prevent crashes
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        // macOS arm64 optimizations (only if GPU enabled)
+        // '--enable-features=Metal',
+        // '--use-angle=metal',
         // Performance optimizations
         '--disable-extensions',
         '--disable-sync',
         '--no-first-run',
         '--no-default-browser-check',
         '--disable-infobars',
+        // Prevent crashes
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
       ],
       defaultViewport: {
         width: this.config.viewportWidth,
@@ -289,6 +298,7 @@ export class BrowserManager extends EventEmitter {
 
     this.browser.on('disconnected', () => {
       this.isConnected = false;
+      console.error('[BrowserManager] Browser process disconnected - this usually means Chrome crashed or was killed');
       this.emitError('Browser disconnected', null, true);
     });
   }
@@ -333,17 +343,18 @@ export class BrowserManager extends EventEmitter {
    */
   private startHeartbeat(): void {
     this.stopHeartbeat();
-    // Ping CDP every 10 seconds to keep connection alive
+    // Ping CDP every 5 seconds to keep connection alive
     this.heartbeatTimer = setInterval(async () => {
       if (this.cdpSession && this.isConnected) {
         try {
-          // Simple CDP ping - get browser version (lightweight operation)
-          await this.cdpSession.send('Browser.getVersion');
-        } catch {
+          // Use Page.getFrameTree as a lightweight heartbeat (page-level command)
+          await this.cdpSession.send('Page.getFrameTree');
+        } catch (err) {
           // Heartbeat failed - session may be dead
+          console.error('[BrowserManager] Heartbeat failed:', err);
         }
       }
-    }, 10000);
+    }, 5000);
   }
 
   /**
