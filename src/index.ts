@@ -174,11 +174,18 @@ export async function runAutonomousAgent(config: {
         };
       }
 
-      // Execute tool calls
-      if (response.toolCalls) {
-        let shouldBreak = false;
+      // Execute tool calls - handle nested tool calls from responses
+      let currentResponse = response;
+      let shouldBreakOuter = false;
 
-        for (const toolCall of response.toolCalls) {
+      while (currentResponse.toolCalls && currentResponse.toolCalls.length > 0) {
+        let shouldBreak = false;
+        let nextResponse: typeof currentResponse | null = null;
+
+        for (let i = 0; i < currentResponse.toolCalls.length; i++) {
+          const toolCall = currentResponse.toolCalls[i];
+          const isLastToolCall = i === currentResponse.toolCalls.length - 1;
+
           // Check for browser error before each action
           if (browserError) {
             // Add error result to history only (no API call) for remaining tool calls
@@ -194,15 +201,35 @@ export async function runAutonomousAgent(config: {
           try {
             const result = await controller.executeAction(toolCall.input);
 
-            // Add result to conversation
-            if (result.afterFrame) {
-              await sonnet.addScreenshotResult(toolCall.id, result.afterFrame);
+            // Add result to conversation - only the last one should call the API
+            if (isLastToolCall) {
+              if (result.afterFrame) {
+                nextResponse = await sonnet.addScreenshotResult(toolCall.id, result.afterFrame);
+              } else {
+                nextResponse = await sonnet.addToolResult(
+                  toolCall.id,
+                  `Action ${toolCall.input.action} completed`,
+                  !result.result.success
+                );
+              }
             } else {
-              await sonnet.addToolResult(
-                toolCall.id,
-                `Action ${toolCall.input.action} completed`,
-                !result.result.success
-              );
+              // For non-last tool calls, just add to history
+              if (result.afterFrame) {
+                sonnet.addToolResultToHistory(toolCall.id, [{
+                  type: 'image',
+                  source: {
+                    type: 'base64',
+                    media_type: 'image/jpeg',
+                    data: result.afterFrame.data,
+                  },
+                }], false);
+              } else {
+                sonnet.addToolResultToHistory(
+                  toolCall.id,
+                  `Action ${toolCall.input.action} completed`,
+                  !result.result.success
+                );
+              }
             }
           } catch (err) {
             // Action failed - add error result to history only and break
@@ -219,8 +246,31 @@ export async function runAutonomousAgent(config: {
         // Break the main loop if we had errors
         if (shouldBreak) {
           console.error('[Agent] Stopping due to action failure');
+          shouldBreakOuter = true;
           break;
         }
+
+        // Check if the response indicates we're done
+        if (nextResponse) {
+          // Check if done
+          if (nextResponse.stopReason === 'end_turn' && !nextResponse.toolCalls) {
+            finalFrame = controller.getLatestFrame();
+            return {
+              success: true,
+              steps,
+              finalFrame,
+              conversation: sonnet.getConversationHistory(),
+            };
+          }
+          currentResponse = nextResponse;
+        } else {
+          break;
+        }
+      }
+
+      // Break outer loop if we had errors
+      if (shouldBreakOuter) {
+        break;
       }
 
       // Continue conversation
