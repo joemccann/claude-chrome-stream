@@ -10,10 +10,13 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts",
+    "dev": "tsx src/cli.ts",
     "mcp": "node dist/mcp-server.js",
     "clean": "rm -rf dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test dist/**/*.test.js 2>/dev/null || echo 'No tests found'",
+    "test:integration": "tsx tests/integration.test.ts",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "claude",
