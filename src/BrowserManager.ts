@@ -26,6 +26,7 @@ export class BrowserManager extends EventEmitter {
   private isConnected = false;
   private reconnectAttempts = 0;
   private readonly maxReconnectAttempts = 3;
+  private heartbeatTimer: NodeJS.Timeout | null = null;
 
   constructor(config: Partial<StreamConfig> = {}) {
     super();
@@ -48,6 +49,8 @@ export class BrowserManager extends EventEmitter {
     const launchOptions: PuppeteerLaunchOptions = {
       headless: this.config.headless,
       devtools: this.config.devtools,
+      // Increase protocol timeout to handle long API calls (5 minutes)
+      protocolTimeout: 300000,
       args: [
         `--window-size=${this.config.viewportWidth},${this.config.viewportHeight}`,
         '--disable-web-security',
@@ -56,6 +59,9 @@ export class BrowserManager extends EventEmitter {
         '--disable-backgrounding-occluded-windows',
         '--disable-renderer-backgrounding',
         '--disable-ipc-flooding-protection',
+        // Prevent browser from being killed when idle
+        '--disable-hang-monitor',
+        '--disable-component-update',
         // macOS arm64 optimizations
         '--enable-features=Metal',
         '--use-angle=metal',
@@ -102,6 +108,9 @@ export class BrowserManager extends EventEmitter {
 
       this.isConnected = true;
       this.reconnectAttempts = 0;
+
+      // Start heartbeat to keep CDP session alive during long operations
+      this.startHeartbeat();
 
       this.emit('connected', this.getSessionState());
     } catch (error) {
@@ -219,6 +228,7 @@ export class BrowserManager extends EventEmitter {
    */
   async close(): Promise<void> {
     this.isConnected = false;
+    this.stopHeartbeat();
 
     if (this.cdpSession) {
       try {
@@ -316,6 +326,34 @@ export class BrowserManager extends EventEmitter {
       },
     };
     this.emit('error', event);
+  }
+
+  /**
+   * Start heartbeat to keep CDP session alive during long operations
+   */
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    // Ping CDP every 10 seconds to keep connection alive
+    this.heartbeatTimer = setInterval(async () => {
+      if (this.cdpSession && this.isConnected) {
+        try {
+          // Simple CDP ping - get browser version (lightweight operation)
+          await this.cdpSession.send('Browser.getVersion');
+        } catch {
+          // Heartbeat failed - session may be dead
+        }
+      }
+    }, 10000);
+  }
+
+  /**
+   * Stop heartbeat timer
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 }
 
