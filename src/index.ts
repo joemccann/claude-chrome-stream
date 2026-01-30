@@ -177,16 +177,37 @@ export async function runAutonomousAgent(config: {
       // Execute tool calls
       if (response.toolCalls) {
         for (const toolCall of response.toolCalls) {
-          const result = await controller.executeAction(toolCall.input);
-
-          // Add result to conversation
-          if (result.afterFrame) {
-            await sonnet.addScreenshotResult(toolCall.id, result.afterFrame);
-          } else {
+          // Check for browser error before each action
+          if (browserError) {
+            // Add error result for this and remaining tool calls
             await sonnet.addToolResult(
               toolCall.id,
-              `Action ${toolCall.input.action} completed`,
-              !result.result.success
+              `Action failed: Browser disconnected`,
+              true
+            );
+            continue;
+          }
+
+          try {
+            const result = await controller.executeAction(toolCall.input);
+
+            // Add result to conversation
+            if (result.afterFrame) {
+              await sonnet.addScreenshotResult(toolCall.id, result.afterFrame);
+            } else {
+              await sonnet.addToolResult(
+                toolCall.id,
+                `Action ${toolCall.input.action} completed`,
+                !result.result.success
+              );
+            }
+          } catch (err) {
+            // Action failed - add error result to keep conversation valid
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            await sonnet.addToolResult(
+              toolCall.id,
+              `Action ${toolCall.input.action} failed: ${errorMessage}`,
+              true
             );
           }
         }
