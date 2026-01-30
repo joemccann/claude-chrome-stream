@@ -169,13 +169,14 @@ Always reference the frame you're acting on and explain your actions.`;
   }
 
   /**
-   * Add tool result to conversation and continue
+   * Add tool result to conversation history only (no API call)
+   * Use this when you need to record a result but don't want to continue the conversation
    */
-  async addToolResult(
+  addToolResultToHistory(
     toolUseId: string,
     result: string | MessageContent[],
     isError: boolean = false
-  ): Promise<SonnetResponse> {
+  ): void {
     const toolResult: ToolResultContent = {
       type: 'tool_result',
       tool_use_id: toolUseId,
@@ -187,6 +188,18 @@ Always reference the frame you're acting on and explain your actions.`;
       role: 'user',
       content: [toolResult],
     });
+  }
+
+  /**
+   * Add tool result to conversation and continue
+   */
+  async addToolResult(
+    toolUseId: string,
+    result: string | MessageContent[],
+    isError: boolean = false
+  ): Promise<SonnetResponse> {
+    // Add to history first
+    this.addToolResultToHistory(toolUseId, result, isError);
 
     // Continue conversation
     const messages = this.conversationHistory.map(msg => ({

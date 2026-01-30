@@ -176,15 +176,18 @@ export async function runAutonomousAgent(config: {
 
       // Execute tool calls
       if (response.toolCalls) {
+        let shouldBreak = false;
+
         for (const toolCall of response.toolCalls) {
           // Check for browser error before each action
           if (browserError) {
-            // Add error result for this and remaining tool calls
-            await sonnet.addToolResult(
+            // Add error result to history only (no API call) for remaining tool calls
+            sonnet.addToolResultToHistory(
               toolCall.id,
               `Action failed: Browser disconnected`,
               true
             );
+            shouldBreak = true;
             continue;
           }
 
@@ -202,14 +205,21 @@ export async function runAutonomousAgent(config: {
               );
             }
           } catch (err) {
-            // Action failed - add error result to keep conversation valid
+            // Action failed - add error result to history only and break
             const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-            await sonnet.addToolResult(
+            sonnet.addToolResultToHistory(
               toolCall.id,
               `Action ${toolCall.input.action} failed: ${errorMessage}`,
               true
             );
+            shouldBreak = true;
           }
+        }
+
+        // Break the main loop if we had errors
+        if (shouldBreak) {
+          console.error('[Agent] Stopping due to action failure');
+          break;
         }
       }
 
