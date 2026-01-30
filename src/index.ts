@@ -120,12 +120,26 @@ export async function runAutonomousAgent(config: {
 
   let steps = 0;
   let finalFrame: ScreencastFrame | null = null;
+  let browserError: Error | null = null;
+
+  // Handle browser errors gracefully
+  controller.on('error', (event) => {
+    const data = event.data as { message?: string } | undefined;
+    console.error(`[Agent] Browser error: ${data?.message || 'Unknown error'}`);
+    browserError = new Error(data?.message || 'Browser error');
+  });
 
   try {
     // Initial task prompt
     let prompt = config.task;
 
     while (steps < maxSteps) {
+      // Check for browser errors
+      if (browserError) {
+        console.error('[Agent] Stopping due to browser error');
+        break;
+      }
+
       steps++;
 
       // Get current frame

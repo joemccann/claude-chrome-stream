@@ -286,7 +286,14 @@ export class ChromeStreamController extends EventEmitter {
   }
 
   private handleError(event: StreamEvent): void {
-    this.emit('error', event);
+    // Only emit 'error' if there are listeners, otherwise Node.js will throw
+    if (this.listenerCount('error') > 0) {
+      this.emit('error', event);
+    } else {
+      // Log to stderr if no error handler is attached
+      const data = event.data as { message?: string; recoverable?: boolean } | undefined;
+      console.error(`[ChromeStreamController] Error: ${data?.message || 'Unknown error'}`);
+    }
 
     // Auto-recovery for recoverable errors
     if ('data' in event && typeof event.data === 'object' && event.data !== null) {
@@ -298,6 +305,8 @@ export class ChromeStreamController extends EventEmitter {
           } else {
             this.emit('recovery_failed');
           }
+        }).catch((err) => {
+          console.error('[ChromeStreamController] Recovery failed:', err);
         });
       }
     }
