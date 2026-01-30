@@ -230,11 +230,13 @@ export class InputController {
   }
 
   private async takeScreenshot(): Promise<string> {
+    console.error('[InputController] Taking screenshot...');
     const buffer = await this.page.screenshot({
       type: 'jpeg',
       quality: 80,
       encoding: 'base64',
     });
+    console.error('[InputController] Screenshot complete');
     return buffer as string;
   }
 

@@ -199,10 +199,13 @@ export async function runAutonomousAgent(config: {
           }
 
           try {
+            console.error(`[Agent] Executing action: ${toolCall.input.action}`);
             const result = await controller.executeAction(toolCall.input);
+            console.error(`[Agent] Action completed: ${toolCall.input.action}`);
 
             // Add result to conversation - only the last one should call the API
             if (isLastToolCall) {
+              console.error('[Agent] Calling Anthropic API with result...');
               if (result.afterFrame) {
                 nextResponse = await sonnet.addScreenshotResult(toolCall.id, result.afterFrame);
               } else {
@@ -212,6 +215,7 @@ export async function runAutonomousAgent(config: {
                   !result.result.success
                 );
               }
+              console.error('[Agent] API call completed');
             } else {
               // For non-last tool calls, just add to history
               if (result.afterFrame) {
